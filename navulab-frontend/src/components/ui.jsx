@@ -13,7 +13,7 @@ export function PageHeader({ eyebrow, title, icon, action }) {
               {eyebrow}
             </p>
           )}
-          <h2 className="font-display text-2xl font-semibold text-ink gradient-heading">{title}</h2>
+          <h2 className="font-outfit text-2xl font-extrabold tracking-tight" style={{ color: "#0EA5C7" }}>{title}</h2>
         </div>
       </div>
       {action}

@@ -1,10 +1,13 @@
 from django.conf import settings
 from django.db import transaction
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions, status, generics
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from .models import User, Department
-from .serializers import UserListSerializer, UserCreateSerializer, DepartmentSerializer
+from .models import User, Department, CustomRole, CompanyProfile
+from .serializers import (
+    UserListSerializer, UserCreateSerializer, DepartmentSerializer,
+    CustomRoleSerializer, CompanyProfileSerializer,
+)
 from .signals import send_credentials_email
 from apps.attendance.models import Attendance
 from apps.tasks.models import Task
@@ -22,10 +25,35 @@ class IsHRorCEO(permissions.BasePermission):
         return u.is_authenticated and (u.is_admin or u.is_hr or u.is_ceo or u.is_cto)
 
 
+class IsHRorAdmin(permissions.BasePermission):
+    """Strictly HR/Admin — unlike IsHRorCEO, CEO/CTO are deliberately excluded.
+    Used for Roles/Permissions/Settings, which are HR+Admin-only by design."""
+    def has_permission(self, request, view):
+        u = request.user
+        return u.is_authenticated and (u.is_admin or u.is_hr)
+
+
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
     permission_classes = [IsHRorCEO]
+
+
+class CustomRoleViewSet(viewsets.ModelViewSet):
+    """HR/Admin can create custom roles with their own permission flags."""
+    queryset = CustomRole.objects.all().order_by("name")
+    serializer_class = CustomRoleSerializer
+    permission_classes = [IsHRorAdmin]
+
+
+class CompanyProfileView(generics.RetrieveUpdateAPIView):
+    """Singleton company profile shown on the Settings page. HR/Admin only."""
+    serializer_class = CompanyProfileSerializer
+    permission_classes = [IsHRorAdmin]
+
+    def get_object(self):
+        obj, _ = CompanyProfile.objects.get_or_create(pk=1)
+        return obj
 
 
 class UserViewSet(viewsets.ModelViewSet):

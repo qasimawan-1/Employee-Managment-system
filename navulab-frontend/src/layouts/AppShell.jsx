@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import api from "../api/client";
+import { ShellToastContext } from "./ShellToastContext";
 import "./AppShell.css";
 
 const ROLE_LABELS = {
@@ -32,19 +33,18 @@ const PAGE_TITLES = {
   "/chat": "Chat",
   "/payroll": "Payroll",
   "/employees": "Employees",
+  "/roles": "Roles",
+  "/permissions": "Permissions",
+  "/settings": "Settings",
 };
-
-const ShellToastContext = createContext(() => {});
-export function useShellToast() {
-  return useContext(ShellToastContext);
-}
 
 export default function AppShell() {
   const { user, logout, canSeeAllDepartments, isFinance, isHR, isAdmin, isTeamLead } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  // Light theme was removed from the post-login app shell — always dark.
+  const isDarkMode = true;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState({ visible: false, message: "", type: "info" });
   const [pendingTasksCount, setPendingTasksCount] = useState(0);
@@ -65,20 +65,13 @@ export default function AppShell() {
     };
   }, [location.pathname]);
 
-  const canvasRef = useRef(null);
-  const isDarkModeRef = useRef(isDarkMode);
-  useEffect(() => {
-    isDarkModeRef.current = isDarkMode;
-  }, [isDarkMode]);
+  const cursorDotRef = useRef(null);
+  const cursorRingRef = useRef(null);
 
   function showToast(message, type = "info") {
     setToast({ visible: true, message, type });
     clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setToast((t) => ({ ...t, visible: false })), 3000);
-  }
-
-  function toggleTheme() {
-    setIsDarkMode((v) => !v);
   }
 
   function handleLogout() {
@@ -90,148 +83,37 @@ export default function AppShell() {
     window.scrollTo(0, 0);
   }, [location.pathname]);
 
-  // ---- Interactive canvas background with cursor trail (ported 1:1 from the HTML) ----
+  // ---- Trailing-ring cursor: dot glued to the pointer, ring eases in behind it.
+  // (The animated background canvas/particles were removed.)
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-
-    let width = window.innerWidth || 1000;
-    let height = window.innerHeight || 800;
-    let mouseX = width / 2;
-    let mouseY = height / 2;
+    let mouseX = window.innerWidth / 2;
+    let mouseY = window.innerHeight / 2;
     let targetX = mouseX;
     let targetY = mouseY;
 
-    const particles = Array.from({ length: 70 }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      radius: Math.random() * 2.5 + 1,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-    }));
-    const cursorTrail = [];
-
-    function resizeCanvas() {
-      width = canvas.width = window.innerWidth || 1000;
-      height = canvas.height = window.innerHeight || 800;
-    }
     function onMouseMove(e) {
       if (!e || typeof e.clientX !== "number") return;
       targetX = e.clientX;
       targetY = e.clientY;
-
-      cursorTrail.push({ x: e.clientX, y: e.clientY, radius: Math.random() * 4 + 2, alpha: 1 });
-      if (cursorTrail.length > 20) cursorTrail.shift();
-
-      document.querySelectorAll(".novu-shell .glass-card").forEach((card) => {
-        const rect = card.getBoundingClientRect();
-        card.style.setProperty("--mouse-x", `${e.clientX - rect.left}px`);
-        card.style.setProperty("--mouse-y", `${e.clientY - rect.top}px`);
-      });
+      if (cursorDotRef.current) {
+        cursorDotRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+      }
     }
-
-    window.addEventListener("resize", resizeCanvas);
     window.addEventListener("mousemove", onMouseMove);
-    resizeCanvas();
 
     let frameId;
     function render() {
-      const dark = isDarkModeRef.current;
-
       mouseX += (targetX - mouseX) * 0.08;
       mouseY += (targetY - mouseY) * 0.08;
-
-      ctx.clearRect(0, 0, width, height);
-
-      const radius = Math.max(width, height) * 0.75;
-      const grad1 = ctx.createRadialGradient(mouseX, mouseY, 40, mouseX, mouseY, Math.max(50, radius));
-      if (dark) {
-        grad1.addColorStop(0, "rgba(28, 74, 115, 0.85)");
-        grad1.addColorStop(0.5, "rgba(18, 50, 84, 0.95)");
-        grad1.addColorStop(1, "rgba(10, 36, 64, 0.98)");
-      } else {
-        grad1.addColorStop(0, "rgba(235, 245, 255, 0.9)");
-        grad1.addColorStop(0.5, "rgba(243, 248, 252, 0.95)");
-        grad1.addColorStop(1, "rgba(230, 240, 250, 0.98)");
+      if (cursorRingRef.current) {
+        cursorRingRef.current.style.transform = `translate(${mouseX}px, ${mouseY}px) translate(-50%, -50%)`;
       }
-      ctx.fillStyle = grad1;
-      ctx.fillRect(0, 0, width, height);
-
-      const orb1X = width * 0.2 + (mouseX - width / 2) * 0.12;
-      const orb1Y = height * 0.3 + (mouseY - height / 2) * 0.12;
-      const gradOrb1 = ctx.createRadialGradient(orb1X, orb1Y, 0, orb1X, orb1Y, 350);
-      if (dark) {
-        gradOrb1.addColorStop(0, "rgba(102, 232, 255, 0.18)");
-        gradOrb1.addColorStop(1, "transparent");
-      } else {
-        gradOrb1.addColorStop(0, "rgba(2, 132, 199, 0.12)");
-        gradOrb1.addColorStop(1, "transparent");
-      }
-      ctx.fillStyle = gradOrb1;
-      ctx.fillRect(0, 0, width, height);
-
-      for (let i = 0; i < cursorTrail.length; i++) {
-        const pt = cursorTrail[i];
-        pt.alpha -= 0.04;
-        pt.radius *= 0.95;
-        if (pt.alpha > 0) {
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, Math.max(0.5, pt.radius), 0, Math.PI * 2);
-          ctx.fillStyle = dark ? `rgba(102, 232, 255, ${pt.alpha})` : `rgba(2, 132, 199, ${pt.alpha * 0.5})`;
-          ctx.fill();
-        }
-      }
-
-      particles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
-
-        const dx = mouseX - p.x;
-        const dy = mouseY - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 120 && dist > 0) {
-          p.x -= (dx / dist) * 1.5;
-          p.y -= (dy / dist) * 1.5;
-        }
-      });
-
-      // Constellation mesh: thin lines between particles that are near each other
-      const linkDistance = 150;
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < linkDistance) {
-            const alpha = (1 - dist / linkDistance) * (dark ? 0.35 : 0.2);
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = dark ? `rgba(102, 232, 255, ${alpha})` : `rgba(2, 132, 199, ${alpha})`;
-            ctx.lineWidth = 1;
-            ctx.stroke();
-          }
-        }
-      }
-
-      particles.forEach((p) => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = dark ? "rgba(102, 232, 255, 0.5)" : "rgba(2, 132, 199, 0.35)";
-        ctx.fill();
-      });
-
       frameId = requestAnimationFrame(render);
     }
     render();
 
     return () => {
       cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", resizeCanvas);
       window.removeEventListener("mousemove", onMouseMove);
     };
   }, []);
@@ -251,13 +133,12 @@ export default function AppShell() {
       <div
         className={`novu-shell ${isDarkMode ? "dark" : ""} min-h-screen relative flex overflow-x-hidden selection:bg-electric-cyan selection:text-navy-900`}
         style={{
-          background: isDarkMode
-            ? "linear-gradient(180deg, #0A2440 0%, #123254 45%, #1C4A73 100%)"
-            : "linear-gradient(180deg, #EBF5FF 0%, #F3F8FC 45%, #E6F0FA 100%)",
-          color: isDarkMode ? "#f0f9ff" : "#071B2E",
+          background: "#ffffff",
+          color: "#0f172a",
         }}
       >
-        <canvas ref={canvasRef} id="novuShellCanvas" />
+        <div ref={cursorRingRef} className="custom-cursor-ring" />
+        <div ref={cursorDotRef} className="custom-cursor-dot" />
 
         {/* Mobile drawer backdrop */}
         {mobileOpen && (
@@ -268,15 +149,15 @@ export default function AppShell() {
         )}
 
         <aside
-          className={`fixed lg:sticky top-0 left-0 h-screen w-72 glass-card border-r border-electric-cyan/20 z-40 flex flex-col justify-between p-5 transition-transform duration-300 shrink-0 ${
+          className={`app-sidebar content-light fixed lg:sticky top-0 left-0 h-screen w-72 glass-card border-r border-slate-200 z-40 flex flex-col justify-between p-5 overflow-y-auto transition-transform duration-300 shrink-0 ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           } lg:translate-x-0`}
         >
           <div className="space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-electric-cyan/20">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <NavLink to="/" className="flex items-center gap-3.5 group">
                 <div className="relative w-10 h-10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                  <svg className="w-full h-full drop-shadow-[0_0_12px_rgba(102,232,255,0.5)]" viewBox="0 0 100 100" fill="none">
+                  <svg className="w-full h-full drop-shadow-[0_2px_6px_rgba(28,115,201,0.25)]" viewBox="0 0 100 100" fill="none">
                     <path d="M20 75L48 20L68 55L90 20V75L68 75L48 40L28 75H20Z" fill="url(#logoGrad1)" />
                     <path d="M48 20L68 55H90L68 20H48Z" fill="url(#logoGrad2)" />
                     <defs>
@@ -293,13 +174,13 @@ export default function AppShell() {
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-outfit font-black text-xl tracking-tight text-white leading-none">Novu</span>
-                    <span className="font-outfit font-black text-xl tracking-tight text-electric-cyan leading-none">Labs</span>
+                    <span className="font-outfit font-black text-xl tracking-tight text-slate-900 leading-none">Novu</span>
+                    <span className="font-outfit font-black text-xl tracking-tight text-blue-600 leading-none">Labs</span>
                   </div>
-                  <span className="text-[10px] font-bold tracking-widest text-electric-sky uppercase mt-1">Ops Console</span>
+                  <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-1">Ops Console</span>
                 </div>
               </NavLink>
-              <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-white rounded-xl transition" aria-label="Close menu">
+              <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-700 rounded-xl transition" aria-label="Close menu">
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
             </div>
@@ -313,17 +194,17 @@ export default function AppShell() {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     `nav-pill flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition group ${
-                      isActive ? "nav-pill-active" : "text-slate-300 hover:bg-navy-700/60 hover:text-electric-cyan"
+                      isActive ? "nav-pill-active" : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
                     }`
                   }
                 >
                   <i className={`${item.icon} text-sm w-5 text-center transition-transform group-hover:scale-125 ${item.hover || ""}`}></i>
                   <span>{item.label}</span>
                   {item.badgeKey === "live" && (
-                    <span className="ml-auto bg-emerald-500/15 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Live</span>
+                    <span className="ml-auto bg-emerald-50 text-emerald-600 text-[10px] px-2 py-0.5 rounded-full font-bold">Live</span>
                   )}
                   {item.badgeKey === "tasks" && (
-                    <span className="ml-auto bg-amber-500/15 text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold">{pendingTasksCount}</span>
+                    <span className="ml-auto bg-amber-50 text-amber-600 text-[10px] px-2 py-0.5 rounded-full font-bold">{pendingTasksCount}</span>
                   )}
                 </NavLink>
               ))}
@@ -334,7 +215,7 @@ export default function AppShell() {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     `nav-pill flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition group ${
-                      isActive ? "nav-pill-active" : "text-slate-300 hover:bg-navy-700/60 hover:text-electric-cyan"
+                      isActive ? "nav-pill-active" : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
                     }`
                   }
                 >
@@ -349,7 +230,7 @@ export default function AppShell() {
                   onClick={() => setMobileOpen(false)}
                   className={({ isActive }) =>
                     `nav-pill flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition group ${
-                      isActive ? "nav-pill-active" : "text-slate-300 hover:bg-navy-700/60 hover:text-electric-cyan"
+                      isActive ? "nav-pill-active" : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
                     }`
                   }
                 >
@@ -357,94 +238,126 @@ export default function AppShell() {
                   <span>Employees</span>
                 </NavLink>
               )}
+
+              {(isHR || isAdmin) && (
+                <>
+                  <NavLink
+                    to="/roles"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      `nav-pill flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition group ${
+                        isActive ? "nav-pill-active" : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
+                      }`
+                    }
+                  >
+                    <i className="fa-solid fa-user-tag text-sm w-5 text-center transition-transform group-hover:scale-125"></i>
+                    <span>Roles</span>
+                  </NavLink>
+                  <NavLink
+                    to="/permissions"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      `nav-pill flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition group ${
+                        isActive ? "nav-pill-active" : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
+                      }`
+                    }
+                  >
+                    <i className="fa-solid fa-shield-halved text-sm w-5 text-center transition-transform group-hover:scale-125"></i>
+                    <span>Permissions</span>
+                  </NavLink>
+                  <NavLink
+                    to="/settings"
+                    onClick={() => setMobileOpen(false)}
+                    className={({ isActive }) =>
+                      `nav-pill flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-bold transition group ${
+                        isActive ? "nav-pill-active" : "text-slate-600 hover:bg-slate-100 hover:text-blue-600"
+                      }`
+                    }
+                  >
+                    <i className="fa-solid fa-gear text-sm w-5 text-center transition-transform group-hover:scale-125"></i>
+                    <span>Settings</span>
+                  </NavLink>
+                </>
+              )}
             </nav>
           </div>
 
-          <div className="pt-4 border-t border-electric-cyan/20">
-            <div className="p-3 rounded-2xl bg-navy-800/80 border border-electric-cyan/20 flex items-center justify-between">
+          <div className="pt-4 border-t border-slate-200">
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-electric-azure to-electric-cyan text-navy-900 font-extrabold flex items-center justify-center text-sm shadow-md shrink-0">
                   {initial}
                 </div>
                 <div className="leading-tight min-w-0">
-                  <span className="block text-xs font-extrabold text-white truncate">{user?.username}</span>
-                  <span className="block text-[10px] font-bold text-electric-sky">{ROLE_LABELS[user?.role] || user?.role}</span>
+                  <span className="block text-xs font-extrabold text-slate-900 truncate">{user?.username}</span>
+                  <span className="block text-[10px] font-bold text-slate-500">{ROLE_LABELS[user?.role] || user?.role}</span>
                 </div>
               </div>
-              <button onClick={handleLogout} className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition shrink-0" title="Logout">
+              <button onClick={handleLogout} className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition shrink-0" title="Logout">
                 <i className="fa-solid fa-right-from-bracket text-xs"></i>
               </button>
             </div>
           </div>
         </aside>
 
-        <div className="flex-1 min-w-0 flex flex-col relative z-10 min-h-screen">
-          <header className="sticky top-0 z-20 glass-card border-b border-electric-cyan/20 px-4 sm:px-8 py-4 flex items-center justify-between">
+        <div className="content-light flex-1 min-w-0 flex flex-col relative z-10 min-h-screen">
+          <header className="bg-white/90 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200 px-4 sm:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileOpen(true)}
-                className="lg:hidden p-2.5 rounded-2xl bg-navy-800 border border-electric-cyan/30 text-electric-cyan hover:bg-electric-azure hover:text-white transition"
+                className="lg:hidden p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition"
                 aria-label="Open menu"
               >
                 <i className="fa-solid fa-bars text-sm"></i>
               </button>
               <div>
-                <h1 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 flex items-center gap-2">
                   <span>{pageTitle}</span>
                 </h1>
-                <p className="text-[11px] text-electric-sky hidden sm:block">{dateText}</p>
+                <p className="text-[11px] text-slate-500 hidden sm:block">{dateText}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3.5">
               <button
-                onClick={toggleTheme}
-                className="px-3.5 py-2 rounded-2xl bg-navy-800/80 text-electric-cyan hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 border border-electric-cyan/30"
-                aria-label="Toggle theme"
-              >
-                <i className={`fa-solid ${isDarkMode ? "fa-moon text-electric-cyan" : "fa-sun text-amber-500"} text-xs`}></i>
-                <span className="text-xs font-bold hidden md:inline">{isDarkMode ? "Dark Theme" : "Light Theme"}</span>
-              </button>
-
-              <button
                 onClick={() => showToast("No new notifications", "info")}
-                className="anim-icon-wiggle p-2.5 rounded-2xl bg-navy-800/80 border border-electric-cyan/30 text-electric-cyan hover:text-white transition relative group"
+                className="anim-icon-wiggle p-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-600 hover:bg-blue-50 hover:text-blue-600 transition relative group"
               >
                 <i className="fa-regular fa-bell text-sm"></i>
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-electric-cyan rounded-full animate-ping"></span>
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-blue-500 rounded-full animate-ping"></span>
               </button>
             </div>
           </header>
 
-          <main className="flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto">
+          <main className="bg-white flex-1 p-4 sm:p-8 space-y-8 max-w-7xl w-full mx-auto">
             <Outlet />
           </main>
 
-          <footer className="mt-auto border-t border-electric-cyan/20 px-4 sm:px-8 py-5 text-xs text-electric-sky flex flex-col sm:flex-row items-center justify-between gap-3">
+          <footer className="bg-white mt-auto border-t border-slate-200 px-4 sm:px-8 py-5 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
             <span>© 2026 NovuLabs Software Solutions. All rights reserved.</span>
             <div className="flex items-center gap-4">
-              <span className="text-electric-cyan font-bold">Ops Console v2.4</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-electric-azure"></span>
+              <span className="text-blue-600 font-bold">Ops Console v2.4</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
               <span>Enterprise Core</span>
             </div>
           </footer>
         </div>
 
         <div
-          className={`fixed bottom-6 right-6 z-50 glass-card px-5 py-3.5 rounded-2xl shadow-2xl border border-electric-cyan/40 transition-all duration-300 flex items-center gap-3 max-w-sm ${
+          className={`fixed bottom-6 right-6 z-50 bg-white shadow-xl border border-slate-200 px-5 py-3.5 rounded-2xl transition-all duration-300 flex items-center gap-3 max-w-sm ${
             toast.visible ? "translate-y-0 opacity-100" : "translate-y-20 opacity-0 pointer-events-none"
           }`}
         >
           <i
             className={`fa-solid text-sm shrink-0 ${
               toast.type === "success"
-                ? "fa-circle-check text-emerald-400"
+                ? "fa-circle-check text-emerald-500"
                 : toast.type === "error"
-                ? "fa-circle-xmark text-rose-400"
-                : "fa-circle-info text-electric-cyan"
+                ? "fa-circle-xmark text-rose-500"
+                : "fa-circle-info text-blue-600"
             }`}
           ></i>
-          <span className="text-xs font-extrabold text-white whitespace-nowrap">{toast.message}</span>
+          <span className="text-xs font-extrabold text-slate-900 whitespace-nowrap">{toast.message}</span>
         </div>
       </div>
     </ShellToastContext.Provider>

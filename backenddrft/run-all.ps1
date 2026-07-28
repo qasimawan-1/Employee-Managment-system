@@ -4,7 +4,7 @@
 
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
-$py = "D:\Awais\.venv\Scripts\python.exe"
+$py = Join-Path $root "..\.venv\Scripts\python.exe"
 $logs = Join-Path $root ".run_logs"
 New-Item -ItemType Directory -Force -Path $logs | Out-Null
 

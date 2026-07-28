@@ -7,13 +7,46 @@
   font-family: "Plus Jakarta Sans", sans-serif;
 }
 
-#novuShellCanvas {
+/* Custom trailing-ring cursor: a solid dot glued to the pointer with a larger
+   outlined ring that eases in behind it. */
+.novu-shell,
+.novu-shell * {
+  cursor: none;
+}
+
+.custom-cursor-dot,
+.custom-cursor-ring {
   position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 0;
+  top: 0;
+  left: 0;
+  border-radius: 9999px;
   pointer-events: none;
+  z-index: 100;
+}
+
+.custom-cursor-dot {
+  width: 8px;
+  height: 8px;
+  background: #1c73c9;
+  box-shadow: 0 0 10px rgba(28, 115, 201, 0.7);
+}
+
+.custom-cursor-ring {
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgba(102, 232, 255, 0.45);
+  background: transparent;
+}
+
+@media (hover: none) {
+  .novu-shell,
+  .novu-shell * {
+    cursor: auto;
+  }
+  .custom-cursor-dot,
+  .custom-cursor-ring {
+    display: none;
+  }
 }
 
 .novu-shell .glass-card {
@@ -22,33 +55,26 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
-.novu-shell .glass-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), var(--spotlight-color, rgba(102, 232, 255, 0.18)), transparent 40%);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  z-index: 1;
-}
-
-.novu-shell .glass-card:hover::before {
-  opacity: 1;
-}
-
 .novu-shell.dark .glass-card {
   background: rgba(11, 39, 68, 0.75);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(102, 232, 255, 0.22);
   box-shadow: 0 20px 50px rgba(7, 27, 46, 0.8), 0 0 25px rgba(102, 232, 255, 0.12);
-  --spotlight-color: rgba(102, 232, 255, 0.25);
 }
 
 .novu-shell.dark .glass-card:hover {
   border-color: rgba(102, 232, 255, 0.45);
   box-shadow: 0 20px 50px rgba(7, 27, 46, 0.9), 0 0 35px rgba(102, 232, 255, 0.25);
+}
+
+/* Sidebar nav — plain white like the rest of the app, no glass/blur/glow. */
+.novu-shell.dark .app-sidebar.glass-card {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .novu-shell:not(.dark) .glass-card {
@@ -57,7 +83,6 @@
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(28, 115, 201, 0.18);
   box-shadow: 0 20px 45px rgba(7, 27, 46, 0.06), 0 2px 10px rgba(28, 115, 201, 0.05);
-  --spotlight-color: rgba(28, 115, 201, 0.14);
 }
 
 .novu-shell:not(.dark) .glass-card:hover {
@@ -107,7 +132,6 @@
   background: linear-gradient(90deg, #1c73c9 0%, #123a5d 100%);
   color: #66e8ff;
   border: 1px solid rgba(102, 232, 255, 0.4);
-  box-shadow: 0 0 15px rgba(102, 232, 255, 0.25);
 }
 
 .novu-shell:not(.dark) .nav-pill-active {
@@ -231,4 +255,78 @@
 }
 .novu-shell:not(.dark) .text-electric-sky {
   color: #0c5a99 !important;
+}
+
+/* ---- Clean white content area, sidebar (module bar) stays dark.
+   Same light-mode palette as above, but scoped to .content-light instead of
+   :not(.dark) so it applies even though .novu-shell always carries .dark now
+   (dark theme was locked in shell-wide; this reopens just the content pane). */
+
+.novu-shell .content-light {
+  background: #ffffff !important;
+}
+
+.novu-shell .content-light .glass-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(28, 115, 201, 0.14) !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06) !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.novu-shell .content-light .bg-panel {
+  background: #f8fafc !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.novu-shell .content-light .bg-panel2 {
+  background: #f1f5f9 !important;
+}
+.novu-shell .content-light .border-line,
+.novu-shell .content-light .divide-line > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+.novu-shell .content-light .bg-line {
+  background-color: rgba(15, 23, 42, 0.08) !important;
+}
+.novu-shell .content-light .text-ink,
+.novu-shell .content-light .text-white {
+  color: #0f172a !important;
+}
+.novu-shell .content-light .text-muted,
+.novu-shell .content-light .text-slate-200,
+.novu-shell .content-light .text-slate-300,
+.novu-shell .content-light .text-slate-400 {
+  color: #475569 !important;
+}
+.novu-shell .content-light .bg-navy-800,
+.novu-shell .content-light .bg-navy-800\/80,
+.novu-shell .content-light .bg-navy-800\/90 {
+  background-color: #f1f5f9 !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+.novu-shell .content-light .text-electric-cyan {
+  color: #1c73c9 !important;
+}
+.novu-shell .content-light .text-electric-sky {
+  color: #0c5a99 !important;
+}
+.novu-shell .content-light .gradient-heading {
+  background: linear-gradient(90deg, #5eead4 0%, #22d3ee 30%, #2563eb 65%, #1e3a8a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.novu-shell .content-light .border-electric-cyan\/10,
+.novu-shell .content-light .border-electric-cyan\/20,
+.novu-shell .content-light .border-electric-cyan\/30 {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+.novu-shell .content-light .hover\:bg-navy-700\/60:hover {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+.novu-shell .content-light .nav-pill-active {
+  background: linear-gradient(90deg, #e0f2fe 0%, #bae6fd 100%) !important;
+  color: #0369a1 !important;
+  border: 1px solid rgba(2, 132, 199, 0.3) !important;
 }

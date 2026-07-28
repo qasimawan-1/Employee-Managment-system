@@ -13,6 +13,9 @@ import Reports from "./pages/Reports";
 import Payroll from "./pages/Payroll";
 import Employees from "./pages/Employees";
 import Chat from "./pages/Chat";
+import Roles from "./pages/Roles";
+import Permissions from "./pages/Permissions";
+import Settings from "./pages/Settings";
 
 export default function App() {
   return (
@@ -38,6 +41,9 @@ export default function App() {
             <Route path="payroll" element={<Payroll />} />
             <Route path="employees" element={<Employees />} />
             <Route path="chat" element={<Chat />} />
+            <Route path="roles" element={<Roles />} />
+            <Route path="permissions" element={<Permissions />} />
+            <Route path="settings" element={<Settings />} />
           </Route>
         </Routes>
       </BrowserRouter>

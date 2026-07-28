@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import "./Login.css";
 
 const DESIGN_COLORS = ["#7c3aed", "#06b6d4", "#f43f5e", "#10b981"];

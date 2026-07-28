@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import { usePaginatedList } from "../hooks/usePaginatedList";
 import { PageHeader, Card, EmptyState, Loading, ErrorBanner, Button, Pagination, Avatar } from "../components/ui";
 

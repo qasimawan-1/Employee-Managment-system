@@ -9,7 +9,7 @@ from .serializers import LeaveRequestSerializer, ReviewLeaveRequestSerializer
 class CanReview(permissions.BasePermission):
     def has_permission(self, request, view):
         u = request.user
-        return u.can_see_all_departments or u.is_team_lead
+        return u.can_review_leaves_reports
 
 
 class LeaveRequestViewSet(viewsets.ModelViewSet):

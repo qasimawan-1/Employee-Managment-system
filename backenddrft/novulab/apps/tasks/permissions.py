@@ -8,6 +8,6 @@ class CanManageTask(permissions.BasePermission):
     """
     def has_object_permission(self, request, view, obj):
         user = request.user
-        if user.can_see_all_departments or user.is_team_lead:
+        if user.can_manage_tasks_all:
             return True
         return obj.assigned_to_id == user.id

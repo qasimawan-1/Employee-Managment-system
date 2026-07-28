@@ -1,8 +1,8 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useState, useCallback } from "react";
 import api from "../api/client";
 import { decodeJWT } from "../api/jwt";
 
-const AuthContext = createContext(null);
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -25,6 +25,12 @@ export function AuthProvider({ children }) {
         email: claims.email,
         role: claims.role,
         department_id: claims.department_id,
+        custom_role_name: claims.custom_role_name ?? null,
+        can_see_all_departments: claims.can_see_all_departments,
+        can_manage_employees: claims.can_manage_employees,
+        can_manage_payroll: claims.can_manage_payroll,
+        can_review_leaves_reports: claims.can_review_leaves_reports,
+        can_manage_tasks_all: claims.can_manage_tasks_all,
       };
 
       localStorage.setItem("access_token", data.access);
@@ -50,13 +56,20 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
-  const canSeeAllDepartments = ["ADMIN", "CEO", "CTO", "HR"].includes(user?.role);
+  // `can_see_all_departments` etc. come from the JWT (server-computed, factors in
+  // any custom role too); fall back to the old fixed-role check for tokens issued
+  // before these claims existed, so a user isn't logged out just for this change.
+  const canSeeAllDepartments = user?.can_see_all_departments ?? ["ADMIN", "CEO", "CTO", "HR"].includes(user?.role);
   const isTeamLead = user?.role === "TEAM_LEAD";
   const isFinance = user?.role === "FINANCE";
   const isHR = user?.role === "HR";
   const isCEO = user?.role === "CEO";
   const isCTO = user?.role === "CTO";
   const isAdmin = user?.role === "ADMIN";
+  const canManageEmployees = user?.can_manage_employees ?? (canSeeAllDepartments || isTeamLead);
+  const canManagePayroll = user?.can_manage_payroll ?? (isFinance || isHR || isAdmin);
+  const canReviewLeavesReports = user?.can_review_leaves_reports ?? (canSeeAllDepartments || isTeamLead);
+  const canManageTasksAll = user?.can_manage_tasks_all ?? (canSeeAllDepartments || isTeamLead);
 
   return (
     <AuthContext.Provider
@@ -73,15 +86,13 @@ export function AuthProvider({ children }) {
         isCEO,
         isCTO,
         isAdmin,
+        canManageEmployees,
+        canManagePayroll,
+        canReviewLeavesReports,
+        canManageTasksAll,
       }}
     >
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
 }

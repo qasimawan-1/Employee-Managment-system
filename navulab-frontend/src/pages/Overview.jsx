@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../api/client";
-import { useAuth } from "../context/AuthContext";
-import { useShellToast } from "../layouts/AppShell";
+import { useAuth } from "../context/useAuth";
+import { useShellToast } from "../layouts/ShellToastContext";
 import { Card, Loading, StatusPill } from "../components/ui";
 
 const STAT_TONE_BORDER = {
@@ -235,9 +235,9 @@ export default function Overview() {
       {/* Welcome banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2">
+          <h2 className="font-outfit text-3xl sm:text-4xl font-extrabold tracking-tight leading-tight text-slate-900 flex items-center gap-2">
             <span>{greeting},</span>
-            <span className="gradient-heading bg-gradient-to-r from-electric-ice via-electric-bright to-electric-azure bg-clip-text text-transparent capitalize">
+            <span className="capitalize" style={{ color: "#0EA5C7" }}>
               {user?.username}
             </span>
             <span className="inline-block animate-wave origin-bottom-right">👋</span>
