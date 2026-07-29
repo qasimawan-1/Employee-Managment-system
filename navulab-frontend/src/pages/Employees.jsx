@@ -226,7 +226,7 @@ export default function Employees() {
 
       {showForm && (
         <Card className="p-5 mb-6">
-          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-muted mb-1.5">Username</label>
               <input required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
@@ -298,7 +298,7 @@ export default function Employees() {
               <input required type="date" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs text-muted mb-1.5">Residential address</label>
               <input required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.residential_address} onChange={(e) => setForm({ ...form, residential_address: e.target.value })} />
@@ -333,7 +333,7 @@ export default function Employees() {
                 {editingId && <p className="text-[11px] text-muted mt-1">Custom role can't be changed from this form.</p>}
               </div>
             )}
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Button type="submit">
                 <i className={`fa-solid ${editingId ? "fa-floppy-disk" : "fa-paper-plane"}`}></i>
                 {editingId ? "Save changes" : "Create account & email credentials"}

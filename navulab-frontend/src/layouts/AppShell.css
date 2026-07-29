@@ -55,6 +55,21 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
 }
 
+/* The rule above's `position: relative` outranks Tailwind's `fixed` utility
+   (two classes beat one on specificity), so the sidebar — which is also a
+   .glass-card — was stuck at `position: relative` on mobile instead of
+   `fixed`. That kept it in normal flex flow even while translated off-screen,
+   reserving its 288px of layout width and squeezing the page content into a
+   sliver on the right. Pin the sidebar's own responsive position back. */
+.novu-shell .app-sidebar.glass-card {
+  position: fixed;
+}
+@media (min-width: 1024px) {
+  .novu-shell .app-sidebar.glass-card {
+    position: relative;
+  }
+}
+
 .novu-shell.dark .glass-card {
   background: rgba(11, 39, 68, 0.75);
   backdrop-filter: blur(24px);

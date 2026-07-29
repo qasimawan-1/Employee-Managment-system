@@ -80,7 +80,7 @@ export default function Chat() {
 
       {showNew && (
         <Card className="p-5 mb-6">
-          <form onSubmit={handleNewConversation} className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleNewConversation} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-muted mb-1.5">Other person's user ID</label>
               <input required type="number" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
@@ -91,7 +91,7 @@ export default function Chat() {
               <input type="number" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={newForm.task_id} onChange={(e) => setNewForm({ ...newForm, task_id: e.target.value })} />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Button type="submit"><i className="fa-solid fa-comment-dots"></i> Start conversation</Button>
             </div>
           </form>

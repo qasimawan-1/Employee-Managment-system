@@ -87,7 +87,7 @@ python manage.py migrate
 python manage.py runserver 8080
 ```
 
-Or from `backenddrft/`, just run `run-all.ps1` (see `stop-all.ps1` to stop).
+Or from `backend/`, just run `run-all.ps1` (see `stop-all.ps1` to stop).
 
 ## Important before running
 

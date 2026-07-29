@@ -1,15 +1,26 @@
 import os
 from datetime import timedelta
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-prod")
-DEBUG = os.getenv("DEBUG", "True") == "True"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
+# DEBUG defaults to False (safe-by-default) — local dev sets DEBUG=True in .env.
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "insecure-dev-only-key-set-a-real-SECRET_KEY-in-.env"  # nosec: DEBUG-only fallback
+    else:
+        raise ImproperlyConfigured("SECRET_KEY environment variable must be set when DEBUG=False.")
+
+# "*" is only used when DEBUG=True (local dev); a real deployment must set
+# ALLOWED_HOSTS explicitly in .env, otherwise Django itself refuses all hosts.
+ALLOWED_HOSTS = [h for h in os.getenv("ALLOWED_HOSTS", "*" if DEBUG else "").split(",") if h]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -98,7 +109,12 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+# Allow-all is fine for local dev; a real deployment must list its actual
+# frontend origin(s) via CORS_ALLOWED_ORIGINS in .env (comma-separated).
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOWED_ORIGINS = [o for o in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if o]
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Riyadh"

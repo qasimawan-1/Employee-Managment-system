@@ -525,8 +525,8 @@ export default function Tasks() {
       {/* ================= CREATE FORM ================= */}
       {showForm && (
         <Card className="p-5 mb-6">
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
               <label className="block text-xs text-muted mb-1.5">Title</label>
               <input
                 required
@@ -535,7 +535,7 @@ export default function Tasks() {
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
               />
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <label className="block text-xs text-muted mb-1.5">Description</label>
               <textarea
                 className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
@@ -546,7 +546,7 @@ export default function Tasks() {
             </div>
             {canAssign ? (
               <>
-                <div className="col-span-2 sm:col-span-1">
+                <div>
                   <label className="block text-xs text-muted mb-1.5">Assign to</label>
                   <select
                     required
@@ -564,7 +564,7 @@ export default function Tasks() {
                     ))}
                   </select>
                 </div>
-                <div className="col-span-2 sm:col-span-1">
+                <div>
                   <label className="block text-xs text-muted mb-1.5">Department</label>
                   <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-muted">
                     {form._employee ? form._employee.department_name || "Unassigned" : "Pick an assignee first"}
@@ -572,7 +572,7 @@ export default function Tasks() {
                 </div>
               </>
             ) : (
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block text-xs text-muted mb-1.5">Assign to</label>
                 <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-muted">
                   Yourself — {user?.username}
@@ -600,7 +600,7 @@ export default function Tasks() {
                 ))}
               </select>
             </div>
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <Button type="submit" disabled={saving} className="disabled:opacity-60 disabled:cursor-not-allowed">
                 <i className={`fa-solid ${saving ? "fa-circle-notch fa-spin" : "fa-check"}`}></i>
                 {saving ? "Creating…" : "Create task"}

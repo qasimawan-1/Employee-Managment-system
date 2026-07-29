@@ -9,3 +9,6 @@ class NotificationViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         return Notification.objects.filter(recipient_id=self.request.user.id)
+
+    def perform_create(self, serializer):
+        serializer.save(recipient_id=self.request.user.id)

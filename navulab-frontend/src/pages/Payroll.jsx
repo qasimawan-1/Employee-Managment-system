@@ -122,7 +122,7 @@ export default function Payroll() {
 
       {showForm && (
         <Card className="p-5 mb-6">
-          <form onSubmit={handleCreate} className="grid grid-cols-3 gap-4">
+          <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs text-muted mb-1.5">Employee ID</label>
               <input required type="number" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
@@ -158,7 +158,7 @@ export default function Payroll() {
               <input type="number" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.deductions} onChange={(e) => setForm({ ...form, deductions: e.target.value })} />
             </div>
-            <div className="col-span-3">
+            <div className="sm:col-span-2 lg:col-span-3">
               <Button type="submit">Generate</Button>
             </div>
           </form>

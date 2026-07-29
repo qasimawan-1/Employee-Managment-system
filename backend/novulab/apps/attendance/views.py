@@ -4,8 +4,10 @@ from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from .models import Attendance
+from .permissions import CanManageAttendance
 from .serializers import AttendanceSerializer
 
 
@@ -13,10 +15,11 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     """
     - CEO/HR/CTO: see attendance across all departments.
     - Team Lead: see attendance for own department only.
-    - Employee: see + mark only their own attendance.
+    - Employee: see + mark only their own attendance (via check_in/check_out —
+      direct create/update/destroy of an attendance record is manager-only).
     """
     serializer_class = AttendanceSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, CanManageAttendance]
 
     def get_queryset(self):
         user = self.request.user
@@ -26,6 +29,30 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         if user.is_team_lead:
             return qs.filter(department_id=user.department_id)
         return qs.filter(employee_id=user.id)
+
+    def _resolve_target(self, requester, employee_id):
+        from apps.users.models import User
+        if employee_id is None:
+            raise ValidationError({"employee_id": "employee_id is required."})
+        target = User.objects.filter(id=employee_id).first()
+        if target is None:
+            raise ValidationError({"employee_id": "No employee exists with this employee_id."})
+        if requester.is_team_lead and not requester.can_see_all_departments and target.department_id != requester.department_id:
+            raise ValidationError({"employee_id": "You can only manage attendance within your own department."})
+        return target
+
+    def perform_create(self, serializer):
+        target = self._resolve_target(self.request.user, serializer.validated_data.get("employee_id"))
+        serializer.save(employee_id=target.id, employee_username=target.username, department_id=target.department_id)
+
+    def perform_update(self, serializer):
+        instance = serializer.instance
+        new_employee_id = serializer.validated_data.get("employee_id", instance.employee_id)
+        if new_employee_id != instance.employee_id:
+            target = self._resolve_target(self.request.user, new_employee_id)
+            serializer.save(employee_id=target.id, employee_username=target.username, department_id=target.department_id)
+        else:
+            serializer.save()
 
     @action(detail=False, methods=["post"])
     def check_in(self, request):

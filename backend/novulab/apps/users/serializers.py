@@ -65,6 +65,15 @@ class UserListSerializer(serializers.ModelSerializer):
         mgr = obj.reporting_manager
         return f"{mgr.first_name} {mgr.last_name}".strip() or mgr.username
 
+    def validate_department(self, value):
+        # department drives queryset scoping for Tasks/Attendance/Leaves/Reports/
+        # Employees — letting a low-privilege user change their own department
+        # would let them grant themselves visibility into another department.
+        request = self.context["request"]
+        if not request.user.can_manage_employees:
+            raise serializers.ValidationError("You are not allowed to change department.")
+        return value
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """

@@ -9,4 +9,4 @@ class AttendanceSerializer(serializers.ModelSerializer):
             "id", "employee_id", "employee_username", "department_id",
             "date", "check_in", "check_out", "status",
         ]
-        read_only_fields = ["employee_id", "employee_username", "department_id"]
+        read_only_fields = ["employee_username", "department_id"]

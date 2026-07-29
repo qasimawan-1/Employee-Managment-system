@@ -73,7 +73,7 @@ export default function Leaves() {
       {showForm && (
         <Card className="p-5 mb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs text-muted mb-1.5">Type</label>
                 <select
