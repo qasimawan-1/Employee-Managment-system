@@ -166,8 +166,8 @@ const EMPTY_FORM = {
 };
 
 export default function Tasks() {
-  const { user, canSeeAllDepartments, isTeamLead } = useAuth();
-  const canAssign = canSeeAllDepartments || isTeamLead;
+  const { user, canManageTasksAll } = useAuth();
+  const canAssign = canManageTasksAll;
 
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -240,23 +240,30 @@ export default function Tasks() {
 
   async function handleCreate(e) {
     e.preventDefault();
-    const emp = form._employee;
-    if (!emp) {
-      setError("Pick who this task is assigned to.");
-      return;
+    const payload = {
+      title: form.title,
+      description: form.description,
+      due_date: form.due_date || null,
+      priority: form.priority,
+    };
+    if (canAssign) {
+      const emp = form._employee;
+      if (!emp) {
+        setError("Pick who this task is assigned to.");
+        return;
+      }
+      payload.assigned_to_id = emp.id;
+      payload.assigned_to_username = emp.username;
+      payload.department_id = emp.department || null;
+    } else {
+      payload.assigned_to_id = user.id;
+      payload.assigned_to_username = user.username;
+      payload.department_id = user.department_id || null;
     }
     setSaving(true);
     setError("");
     try {
-      await api.post("/api/tasks/tasks/", {
-        title: form.title,
-        description: form.description,
-        assigned_to_id: emp.id,
-        assigned_to_username: emp.username,
-        department_id: emp.department || null,
-        due_date: form.due_date || null,
-        priority: form.priority,
-      });
+      await api.post("/api/tasks/tasks/", payload);
       setShowForm(false);
       setForm(EMPTY_FORM);
       loadTasks();
@@ -265,6 +272,92 @@ export default function Tasks() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function downloadTaskReport(period) {
+    const now = new Date();
+    const start = new Date(now);
+    if (period === "weekly") start.setDate(now.getDate() - 7);
+    else start.setMonth(now.getMonth() - 1);
+    const startStr = start.toISOString().slice(0, 10);
+    const endStr = todayStr();
+
+    const myTasks = allTasks
+      .filter((t) => t.assigned_to_id === user?.id)
+      .filter((t) => {
+        const created = (t.created_at || "").slice(0, 10);
+        return created >= startStr && created <= endStr;
+      })
+      .sort((a, b) => (a.created_at || "").localeCompare(b.created_at || ""));
+
+    const win = window.open("", "_blank", "width=800,height=900");
+    if (!win) return;
+    const periodLabel = period === "weekly" ? "Weekly" : "Monthly";
+    const completedCount = myTasks.filter((t) => t.status === "COMPLETED").length;
+
+    const rows = myTasks.length
+      ? myTasks
+          .map(
+            (t) => `
+        <tr>
+          <td>${t.title}</td>
+          <td>${t.priority}</td>
+          <td>${t.status.replace("_", " ")}</td>
+          <td>${t.due_date || "—"}</td>
+          <td>${t.completed_at ? t.completed_at.slice(0, 10) : "—"}</td>
+        </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="5" style="text-align:center;color:#8A93A6;padding:20px 0;">No tasks in this period.</td></tr>`;
+
+    win.document.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${periodLabel} Task Report — ${user?.username}</title>
+          <style>
+            body { font-family: 'Inter', Arial, sans-serif; color: #1F2430; padding: 40px; max-width: 720px; margin: 0 auto; }
+            .brand { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #1C73C9; padding-bottom: 14px; margin-bottom: 20px; }
+            h1 { font-size: 20px; margin: 0; color: #071B2E; }
+            .tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #1C73C9; font-weight: 700; }
+            .muted { color: #8A93A6; font-size: 12px; margin-bottom: 6px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+            th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #8A93A6; padding: 8px 6px; border-bottom: 2px solid #E7EAF1; }
+            td { padding: 10px 6px; border-bottom: 1px solid #E7EAF1; font-size: 13px; }
+            .summary { display: flex; gap: 24px; margin-top: 18px; }
+            .summary div { font-size: 13px; color: #8A93A6; }
+            .summary strong { display: block; font-size: 18px; color: #071B2E; }
+            .footer { margin-top: 32px; font-size: 11px; color: #8A93A6; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="brand">
+            <h1>Novu Labs</h1>
+            <span class="tag">${periodLabel} Task Report</span>
+          </div>
+          <div class="muted">Employee</div>
+          <div style="font-size:15px;font-weight:600;margin-bottom:12px;">${user?.username}</div>
+          <div class="muted">Period</div>
+          <div style="font-size:15px;font-weight:600;">${startStr} to ${endStr}</div>
+          <div class="summary">
+            <div><strong>${myTasks.length}</strong>Total</div>
+            <div><strong>${completedCount}</strong>Completed</div>
+            <div><strong>${myTasks.length - completedCount}</strong>Pending / In progress</div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Title</th><th>Priority</th><th>Status</th><th>Due date</th><th>Completed</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="footer">Generated by Novu Labs EMS · ${new Date().toLocaleString()}</div>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.focus();
+    win.onload = () => win.print();
   }
 
   const today = todayStr();
@@ -319,12 +412,18 @@ export default function Tasks() {
         title="Tasks"
         icon="fa-solid fa-list-check"
         action={
-          canAssign && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="ghost" onClick={() => downloadTaskReport("weekly")}>
+              <i className="fa-solid fa-file-arrow-down"></i> Weekly report
+            </Button>
+            <Button variant="ghost" onClick={() => downloadTaskReport("monthly")}>
+              <i className="fa-solid fa-file-arrow-down"></i> Monthly report
+            </Button>
             <Button onClick={() => setShowForm((s) => !s)}>
               <i className={`fa-solid ${showForm ? "fa-xmark" : "fa-plus"}`}></i>
               {showForm ? "Cancel" : "New task"}
             </Button>
-          )
+          </div>
         }
       />
 
@@ -445,30 +544,41 @@ export default function Tasks() {
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
             </div>
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs text-muted mb-1.5">Assign to</label>
-              <select
-                required
-                className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
-                value={form.assigned_to_id}
-                onChange={(e) => selectAssignee(e.target.value)}
-              >
-                <option value="" disabled>
-                  {employees.length ? "Select an employee…" : "No employees found"}
-                </option>
-                {employees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {(emp.first_name || emp.username) + (emp.last_name ? ` ${emp.last_name}` : "")} — {emp.username}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs text-muted mb-1.5">Department</label>
-              <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-muted">
-                {form._employee ? form._employee.department_name || "Unassigned" : "Pick an assignee first"}
+            {canAssign ? (
+              <>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs text-muted mb-1.5">Assign to</label>
+                  <select
+                    required
+                    className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+                    value={form.assigned_to_id}
+                    onChange={(e) => selectAssignee(e.target.value)}
+                  >
+                    <option value="" disabled>
+                      {employees.length ? "Select an employee…" : "No employees found"}
+                    </option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {(emp.first_name || emp.username) + (emp.last_name ? ` ${emp.last_name}` : "")} — {emp.username}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="block text-xs text-muted mb-1.5">Department</label>
+                  <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-muted">
+                    {form._employee ? form._employee.department_name || "Unassigned" : "Pick an assignee first"}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="col-span-2">
+                <label className="block text-xs text-muted mb-1.5">Assign to</label>
+                <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-muted">
+                  Yourself — {user?.username}
+                </div>
               </div>
-            </div>
+            )}
             <div>
               <label className="block text-xs text-muted mb-1.5">Due date</label>
               <input
@@ -589,7 +699,7 @@ export default function Tasks() {
                           </option>
                         ))}
                       </select>
-                      {canAssign && (
+                      {(canAssign || t.assigned_to_id === user?.id) && (
                         <button
                           onClick={() => handleDelete(t)}
                           title="Delete task"

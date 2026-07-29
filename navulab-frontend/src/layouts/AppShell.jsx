@@ -16,7 +16,7 @@ const ROLE_LABELS = {
 };
 
 const NAV_ITEMS = [
-  { to: "/", label: "Overview", icon: "fa-solid fa-chart-pie", end: true, hover: "group-hover:rotate-12" },
+  { to: "/", label: "Dashboard", icon: "fa-solid fa-chart-pie", end: true, hover: "group-hover:rotate-12" },
   { to: "/tasks", label: "Tasks", icon: "fa-solid fa-list-check", badgeKey: "tasks", hover: "group-hover:-translate-y-0.5" },
   { to: "/attendance", label: "Attendance", icon: "fa-solid fa-user-clock", hover: "group-hover:rotate-45" },
   { to: "/leaves", label: "Leaves", icon: "fa-solid fa-calendar-minus", hover: "group-hover:-rotate-12" },
@@ -25,7 +25,7 @@ const NAV_ITEMS = [
 ];
 
 const PAGE_TITLES = {
-  "/": "Overview",
+  "/": "Dashboard",
   "/tasks": "Tasks",
   "/attendance": "Attendance",
   "/leaves": "Leaves",
@@ -67,6 +67,7 @@ export default function AppShell() {
 
   const cursorDotRef = useRef(null);
   const cursorRingRef = useRef(null);
+  const contentScrollRef = useRef(null);
 
   function showToast(message, type = "info") {
     setToast({ visible: true, message, type });
@@ -80,7 +81,7 @@ export default function AppShell() {
   }
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    contentScrollRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
 
   // ---- Trailing-ring cursor: dot glued to the pointer, ring eases in behind it.
@@ -126,12 +127,12 @@ export default function AppShell() {
     month: "long",
     day: "numeric",
   });
-  const pageTitle = PAGE_TITLES[location.pathname] || "Overview";
+  const pageTitle = PAGE_TITLES[location.pathname] || "Dashboard";
 
   return (
     <ShellToastContext.Provider value={showToast}>
       <div
-        className={`novu-shell ${isDarkMode ? "dark" : ""} min-h-screen relative flex overflow-x-hidden selection:bg-electric-cyan selection:text-navy-900`}
+        className={`novu-shell ${isDarkMode ? "dark" : ""} h-screen relative flex overflow-hidden selection:bg-electric-cyan selection:text-navy-900`}
         style={{
           background: "#ffffff",
           color: "#0f172a",
@@ -149,43 +150,35 @@ export default function AppShell() {
         )}
 
         <aside
-          className={`app-sidebar content-light fixed lg:sticky top-0 left-0 h-screen w-72 glass-card border-r border-slate-200 z-40 flex flex-col justify-between p-5 overflow-y-auto transition-transform duration-300 shrink-0 ${
+          className={`app-sidebar content-light fixed lg:relative top-0 left-0 h-screen w-72 glass-card border-r border-slate-200 z-40 flex flex-col p-5 transition-transform duration-300 shrink-0 ${
             mobileOpen ? "translate-x-0" : "-translate-x-full"
           } lg:translate-x-0`}
         >
-          <div className="space-y-6">
+          <div className="shrink-0">
             <div className="flex items-center justify-between pb-4 border-b border-slate-200">
               <NavLink to="/" className="flex items-center gap-3.5 group">
-                <div className="relative w-10 h-10 flex items-center justify-center transition-transform duration-300 group-hover:scale-110">
-                  <svg className="w-full h-full drop-shadow-[0_2px_6px_rgba(28,115,201,0.25)]" viewBox="0 0 100 100" fill="none">
-                    <path d="M20 75L48 20L68 55L90 20V75L68 75L48 40L28 75H20Z" fill="url(#logoGrad1)" />
-                    <path d="M48 20L68 55H90L68 20H48Z" fill="url(#logoGrad2)" />
-                    <defs>
-                      <linearGradient id="logoGrad1" x1="20" y1="20" x2="90" y2="75" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#1C73C9" />
-                        <stop offset="1" stopColor="#66E8FF" />
-                      </linearGradient>
-                      <linearGradient id="logoGrad2" x1="48" y1="20" x2="90" y2="55" gradientUnits="userSpaceOnUse">
-                        <stop stopColor="#55E6F8" />
-                        <stop offset="1" stopColor="#1D78D7" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
+                <div className="relative w-10 h-10 flex items-center justify-center anim-icon-float transition-transform duration-300 group-hover:scale-110">
+                  <img
+                    src="/novulabs-mark.png"
+                    alt="Novu Labs"
+                    className="w-full h-full object-contain drop-shadow-[0_2px_6px_rgba(28,115,201,0.25)]"
+                  />
                 </div>
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
                     <span className="font-outfit font-black text-xl tracking-tight text-slate-900 leading-none">Novu</span>
                     <span className="font-outfit font-black text-xl tracking-tight text-blue-600 leading-none">Labs</span>
                   </div>
-                  <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-1">Ops Console</span>
+                  <span className="text-[10px] font-bold tracking-widest text-slate-400 uppercase mt-1">EMS</span>
                 </div>
               </NavLink>
               <button onClick={() => setMobileOpen(false)} className="lg:hidden p-2 text-slate-400 hover:text-slate-700 rounded-xl transition" aria-label="Close menu">
                 <i className="fa-solid fa-xmark text-lg"></i>
               </button>
             </div>
+          </div>
 
-            <nav className="space-y-1.5 flex-1">
+            <nav className="space-y-1.5 flex-1 min-h-0 overflow-y-auto mt-6 -mx-1 px-1">
               {NAV_ITEMS.map((item) => (
                 <NavLink
                   key={item.to}
@@ -280,9 +273,8 @@ export default function AppShell() {
                 </>
               )}
             </nav>
-          </div>
 
-          <div className="pt-4 border-t border-slate-200">
+          <div className="shrink-0 pt-4 border-t border-slate-200">
             <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-electric-azure to-electric-cyan text-navy-900 font-extrabold flex items-center justify-center text-sm shadow-md shrink-0">
@@ -300,7 +292,7 @@ export default function AppShell() {
           </div>
         </aside>
 
-        <div className="content-light flex-1 min-w-0 flex flex-col relative z-10 min-h-screen">
+        <div ref={contentScrollRef} className="content-light flex-1 min-w-0 flex flex-col relative z-10 h-screen overflow-y-auto">
           <header className="bg-white/90 backdrop-blur-md sticky top-0 z-20 border-b border-slate-200 px-4 sm:px-8 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
@@ -336,7 +328,7 @@ export default function AppShell() {
           <footer className="bg-white mt-auto border-t border-slate-200 px-4 sm:px-8 py-5 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
             <span>© 2026 NovuLabs Software Solutions. All rights reserved.</span>
             <div className="flex items-center gap-4">
-              <span className="text-blue-600 font-bold">Ops Console v2.4</span>
+              <span className="text-blue-600 font-bold">EMS v2.4</span>
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
               <span>Enterprise Core</span>
             </div>

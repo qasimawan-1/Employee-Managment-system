@@ -529,17 +529,17 @@ export default function Login() {
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                  Email Address
+                  Username
                 </label>
                 <div className="input-glass border rounded-2xl px-4 py-3 flex items-center gap-3">
-                  <i className="fa-regular fa-envelope text-slate-400 text-sm"></i>
+                  <i className="fa-regular fa-user text-slate-400 text-sm"></i>
                   <input
                     type="text"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     required
                     autoFocus
-                    placeholder="Enter your email address"
+                    placeholder="Enter your username"
                     className="bg-transparent w-full text-slate-900 dark:text-white placeholder-slate-400 text-sm focus:outline-none"
                   />
                 </div>

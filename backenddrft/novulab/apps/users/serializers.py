@@ -87,13 +87,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         validate_password(value)
         return value
 
-    def validate_role(self, value):
-        request = self.context["request"]
-        # Only HR/CEO/CTO can create HR/CEO/CTO/Finance accounts; team leads can only create Employee role
-        if request.user.role == User.Role.TEAM_LEAD and value != User.Role.EMPLOYEE:
-            raise serializers.ValidationError("Team leads can only create Employee accounts.")
-        return value
-
     def validate_custom_role(self, value):
         request = self.context["request"]
         # Custom roles can grant elevated access (payroll, all-departments, etc.) —
@@ -101,14 +94,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if value is not None and not (request.user.is_admin or request.user.is_hr):
             raise serializers.ValidationError("Only HR/Admin can assign a custom role.")
         return value
-
-    def validate(self, data):
-        request = self.context["request"]
-        if request.user.role == User.Role.TEAM_LEAD:
-            # A team lead can only ever build out their own department's team,
-            # regardless of what department was submitted in the request.
-            data["department"] = request.user.department
-        return data
 
     def create(self, validated_data):
         password = validated_data.pop("password")

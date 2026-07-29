@@ -80,14 +80,12 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action == "create":
-            return [permissions.IsAuthenticated()]  # role-based check happens in serializer
+            return [permissions.IsAuthenticated(), IsHRorAdmin()]
         if self.action == "destroy":
             return [permissions.IsAuthenticated(), IsHRorCEO()]
         return super().get_permissions()
 
     def create(self, request, *args, **kwargs):
-        if not (request.user.is_admin or request.user.is_hr or request.user.is_ceo or request.user.is_cto or request.user.is_team_lead):
-            return Response({"detail": "Not allowed to create accounts."}, status=status.HTTP_403_FORBIDDEN)
         serializer = self.get_serializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()

@@ -69,9 +69,9 @@ only Finance, HR, and the employee themself.
 
 ## Employee onboarding flow
 
-1. HR/CEO/CTO (or a Team Lead, restricted to `EMPLOYEE` role within their own
-   department) calls `POST /api/auth/employees/` with username, email,
-   department, role, and a password they set themselves.
+1. HR/Admin (only — CEO/CTO/Team Lead cannot create accounts) calls
+   `POST /api/auth/employees/` with username, email, department, role, and a
+   password they set themselves.
 2. The account is created and `send_credentials_email()` emails the employee
    their username + password.
 3. Employee logs in via `POST /api/auth/token/` → gets a JWT with `role` and

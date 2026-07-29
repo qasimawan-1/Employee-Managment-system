@@ -13,6 +13,26 @@ const EMPLOYEE_TYPES = [
   { value: "INTERN", label: "Intern" },
 ];
 
+function formatCNIC(value) {
+  const digits = value.replace(/\D/g, "").slice(0, 13);
+  const part1 = digits.slice(0, 5);
+  const part2 = digits.slice(5, 12);
+  const part3 = digits.slice(12, 13);
+  return [part1, part2, part3].filter(Boolean).join("-");
+}
+
+const PHONE_COUNTRY_CODE = "+92";
+
+function formatPhoneDigits(value) {
+  return value.replace(/\D/g, "").slice(0, 11);
+}
+
+// Strips a previously-saved "+92" prefix so the edit form only ever holds
+// the local digits (the input itself never shows the country code).
+function stripPhoneCountryCode(value) {
+  return formatPhoneDigits((value || "").replace(/^\+?92\s*/, ""));
+}
+
 const ROLE_BADGE_CLASSES = {
   ADMIN: "bg-purple/15 text-purple border-purple/30",
   CEO: "bg-purple/15 text-purple border-purple/30",
@@ -32,10 +52,10 @@ function RoleBadge({ role }) {
 }
 
 export default function Employees() {
-  const { isTeamLead, canSeeAllDepartments, user } = useAuth();
-  // Team leads can only ever create Employee accounts, scoped to their own
-  // department by the backend regardless of what's shown here.
-  const ROLES = isTeamLead ? ["EMPLOYEE"] : ALL_ROLES;
+  const { isAdmin, isHR, canSeeAllDepartments, user } = useAuth();
+  // Only HR/Admin can create employee accounts.
+  const canCreateEmployees = isAdmin || isHR;
+  const ROLES = ALL_ROLES;
   const {
     items: employees, page, count, hasNext, hasPrevious, loading, error, setError, goToPage,
   } = usePaginatedList("/api/auth/employees/", "Couldn't load employees.");
@@ -62,6 +82,7 @@ export default function Employees() {
   };
   const [form, setForm] = useState(emptyForm);
   const [customRoles, setCustomRoles] = useState([]);
+  const [editingId, setEditingId] = useState(null);
 
   async function loadDepartments() {
     try {
@@ -96,29 +117,79 @@ export default function Employees() {
     loadCustomRoles();
   }, []);
 
-  async function handleCreate(e) {
+  function openCreateForm() {
+    setForm(emptyForm);
+    setEditingId(null);
+    setSuccess("");
+    setError("");
+    setShowForm(true);
+  }
+
+  function openEditForm(emp) {
+    setForm({
+      username: emp.username || "",
+      email: emp.email || "",
+      first_name: emp.first_name || "",
+      last_name: emp.last_name || "",
+      role: emp.role || "EMPLOYEE",
+      department: emp.department || "",
+      password: "",
+      phone: stripPhoneCountryCode(emp.phone),
+      personal_email: emp.personal_email || "",
+      cnic: emp.cnic || "",
+      residential_address: emp.residential_address || "",
+      date_of_birth: emp.date_of_birth || "",
+      reporting_manager: emp.reporting_manager || "",
+      employee_type: emp.employee_type || "FULL_TIME",
+      custom_role: emp.custom_role || "",
+    });
+    setEditingId(emp.id);
+    setSuccess("");
+    setError("");
+    setShowForm(true);
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    setForm(emptyForm);
+    setEditingId(null);
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault();
     setSuccess("");
     setError("");
+    const payload = {
+      ...form,
+      phone: form.phone ? `${PHONE_COUNTRY_CODE}${form.phone}` : "",
+      department: form.department ? Number(form.department) : null,
+      reporting_manager: form.reporting_manager ? Number(form.reporting_manager) : null,
+      custom_role: form.custom_role ? Number(form.custom_role) : null,
+      date_of_birth: form.date_of_birth || null,
+    };
     try {
-      await api.post("/api/auth/employees/", {
-        ...form,
-        department: form.department ? Number(form.department) : null,
-        reporting_manager: form.reporting_manager ? Number(form.reporting_manager) : null,
-        custom_role: form.custom_role ? Number(form.custom_role) : null,
-        date_of_birth: form.date_of_birth || null,
-      });
-      setSuccess(
-        `Account created for ${form.username} — username/password were emailed to ${form.email}. ` +
-        `(No real mailbox is set up yet, so check the auth-service log if the email hasn't actually arrived.)`
-      );
+      if (editingId) {
+        delete payload.password;
+        delete payload.role;
+        delete payload.custom_role;
+        await api.patch(`/api/auth/employees/${editingId}/`, payload);
+        setSuccess(`${form.username}'s details were updated.`);
+      } else {
+        await api.post("/api/auth/employees/", payload);
+        setSuccess(
+          `Account created for ${form.username} — username/password were emailed to ${form.email}. ` +
+          `(No real mailbox is set up yet, so check the auth-service log if the email hasn't actually arrived.)`
+        );
+      }
       setShowForm(false);
       setForm(emptyForm);
+      setEditingId(null);
       loadManagers();
       goToPage(1);
     } catch (err) {
       const data = err.response?.data;
-      const msg = data?.detail || data?.password?.[0] || data?.username?.[0] || "Couldn't create that account.";
+      const msg = data?.detail || data?.password?.[0] || data?.username?.[0]
+        || (editingId ? "Couldn't update that account." : "Couldn't create that account.");
       setError(msg);
     }
   }
@@ -141,10 +212,12 @@ export default function Employees() {
         title="Employees"
         icon="fa-solid fa-users"
         action={
-          <Button onClick={() => setShowForm((s) => !s)}>
-            <i className={`fa-solid ${showForm ? "fa-xmark" : "fa-user-plus"}`}></i>
-            {showForm ? "Cancel" : "Add employee"}
-          </Button>
+          canCreateEmployees && (
+            <Button onClick={() => (showForm ? closeForm() : openCreateForm())}>
+              <i className={`fa-solid ${showForm ? "fa-xmark" : "fa-user-plus"}`}></i>
+              {showForm ? "Cancel" : "Add employee"}
+            </Button>
+          )
         }
       />
 
@@ -153,7 +226,7 @@ export default function Employees() {
 
       {showForm && (
         <Card className="p-5 mb-6">
-          <form onSubmit={handleCreate} className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-muted mb-1.5">Username</label>
               <input required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
@@ -164,79 +237,77 @@ export default function Employees() {
               <input required type="email" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
-            <div>
-              <label className="block text-xs text-muted mb-1.5">Password</label>
-              <input required type="text" minLength={8} className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal font-mono"
-                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder="min. 8 characters" />
-            </div>
+            {!editingId && (
+              <div>
+                <label className="block text-xs text-muted mb-1.5">Password</label>
+                <input required type="text" minLength={8} className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal font-mono"
+                  value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="min. 8 characters" />
+              </div>
+            )}
             <div>
               <label className="block text-xs text-muted mb-1.5">First name</label>
-              <input className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <input required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Last name</label>
-              <input className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <input required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Role</label>
-              <select className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <select required disabled={!!editingId} className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal disabled:opacity-60"
                 value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 {ROLES.map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
               </select>
+              {editingId && <p className="text-[11px] text-muted mt-1">Role can't be changed from this form.</p>}
             </div>
-            {isTeamLead ? (
-              <div>
-                <label className="block text-xs text-muted mb-1.5">Department</label>
-                <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-muted">
-                  Your department (added automatically)
-                </div>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs text-muted mb-1.5">Department</label>
-                <select className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
-                  value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
-                  <option value="">— none —</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs text-muted mb-1.5">Department</label>
+              <select required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+                value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })}>
+                <option value="" disabled>Select a department</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Primary contact no.</label>
-              <input className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
-                value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <div className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 flex items-center gap-2 focus-within:border-signal">
+                <span className="text-muted font-mono text-sm shrink-0">{PHONE_COUNTRY_CODE}</span>
+                <input required inputMode="numeric" maxLength={11} className="w-full bg-transparent text-ink outline-none font-mono"
+                  value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhoneDigits(e.target.value) })}
+                  placeholder="3XXXXXXXXX" />
+              </div>
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Personal email</label>
-              <input type="email" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <input required type="email" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.personal_email} onChange={(e) => setForm({ ...form, personal_email: e.target.value })} />
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">CNIC no.</label>
-              <input className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
-                value={form.cnic} onChange={(e) => setForm({ ...form, cnic: e.target.value })}
+              <input required inputMode="numeric" maxLength={15} className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal font-mono"
+                value={form.cnic} onChange={(e) => setForm({ ...form, cnic: formatCNIC(e.target.value) })}
                 placeholder="XXXXX-XXXXXXX-X" />
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Date of birth</label>
-              <input type="date" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <input required type="date" className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs text-muted mb-1.5">Residential address</label>
-              <input className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <input required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.residential_address} onChange={(e) => setForm({ ...form, residential_address: e.target.value })} />
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Reporting manager</label>
-              <select className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <select required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.reporting_manager} onChange={(e) => setForm({ ...form, reporting_manager: e.target.value })}>
-                <option value="">— none —</option>
+                <option value="" disabled>Select a reporting manager</option>
                 {managers.map((m) => (
                   <option key={m.id} value={m.id}>{`${m.first_name} ${m.last_name}`.trim() || m.username}</option>
                 ))}
@@ -244,7 +315,7 @@ export default function Employees() {
             </div>
             <div>
               <label className="block text-xs text-muted mb-1.5">Employee type</label>
-              <select className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+              <select required className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
                 value={form.employee_type} onChange={(e) => setForm({ ...form, employee_type: e.target.value })}>
                 {EMPLOYEE_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -252,17 +323,21 @@ export default function Employees() {
             {customRoles.length > 0 && (
               <div>
                 <label className="block text-xs text-muted mb-1.5">Custom role</label>
-                <select className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal"
+                <select disabled={!!editingId} className="w-full bg-panel2 border border-line rounded-lg px-3 py-2 text-ink outline-none focus:border-signal disabled:opacity-60"
                   value={form.custom_role} onChange={(e) => setForm({ ...form, custom_role: e.target.value })}>
                   <option value="">— none —</option>
                   {customRoles.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+                {editingId && <p className="text-[11px] text-muted mt-1">Custom role can't be changed from this form.</p>}
               </div>
             )}
             <div className="col-span-2">
-              <Button type="submit"><i className="fa-solid fa-paper-plane"></i> Create account &amp; email credentials</Button>
+              <Button type="submit">
+                <i className={`fa-solid ${editingId ? "fa-floppy-disk" : "fa-paper-plane"}`}></i>
+                {editingId ? "Save changes" : "Create account & email credentials"}
+              </Button>
             </div>
           </form>
         </Card>
@@ -304,15 +379,24 @@ export default function Employees() {
                   <td className="px-5 py-3 text-muted">{emp.department_name || "—"}</td>
                   {canSeeAllDepartments && (
                     <td className="px-5 py-3 text-right">
-                      {emp.id !== user?.id && (
+                      <div className="inline-flex items-center gap-1">
                         <button
-                          onClick={() => handleDelete(emp)}
-                          title="Delete employee"
-                          className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-muted hover:text-rose hover:bg-rose/10 transition-colors"
+                          onClick={() => openEditForm(emp)}
+                          title="Edit employee"
+                          className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-muted hover:text-signal hover:bg-signal/10 transition-colors"
                         >
-                          <i className="fa-solid fa-trash-can text-xs"></i>
+                          <i className="fa-solid fa-pen text-xs"></i>
                         </button>
-                      )}
+                        {emp.id !== user?.id && (
+                          <button
+                            onClick={() => handleDelete(emp)}
+                            title="Delete employee"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded-lg text-muted hover:text-rose hover:bg-rose/10 transition-colors"
+                          >
+                            <i className="fa-solid fa-trash-can text-xs"></i>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   )}
                 </tr>
