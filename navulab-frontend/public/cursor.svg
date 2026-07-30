@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
+  <defs>
+    <linearGradient id="galaxyFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c24d84"/>
+      <stop offset="45%" stop-color="#7a2158"/>
+      <stop offset="100%" stop-color="#2b0a22"/>
+    </linearGradient>
+  </defs>
+
+  <!-- shadow (no filter primitives - some browsers refuse to render cursor SVGs that use <filter>) -->
+  <path
+    d="M 2.9 3.3 L 2.9 24.3 L 8.4 19.8 L 11.9 27.8 L 15.4 26.3 L 11.9 18.8 L 18.9 18.8 Z"
+    fill="#000000"
+    opacity="0.35"
+  />
+
+  <path
+    d="M 2 2 L 2 23 L 7.5 18.5 L 11 26.5 L 14.5 25 L 11 17.5 L 18 17.5 Z"
+    fill="url(#galaxyFill)"
+    stroke="#f3d9ec"
+    stroke-width="0.9"
+    stroke-linejoin="round"
+  />
+
+  <!-- scattered stars -->
+  <circle cx="4.7" cy="6" r="0.35" fill="#ffffff" opacity="0.9"/>
+  <circle cx="8" cy="4.3" r="0.25" fill="#ffffff" opacity="0.7"/>
+  <circle cx="6.3" cy="11" r="0.3" fill="#ffffff" opacity="0.8"/>
+  <circle cx="3.7" cy="15.5" r="0.3" fill="#ffffff" opacity="0.75"/>
+  <circle cx="10.5" cy="8" r="0.22" fill="#ffffff" opacity="0.6"/>
+  <circle cx="9" cy="14" r="0.28" fill="#ffffff" opacity="0.7"/>
+  <circle cx="12" cy="20.5" r="0.25" fill="#ffffff" opacity="0.6"/>
+  <circle cx="5.5" cy="20" r="0.22" fill="#ffffff" opacity="0.55"/>
+
+  <!-- glossy left-edge highlight -->
+  <path d="M 2.6 2.7 L 2.6 20" stroke="#f8e6f2" stroke-width="0.5" stroke-linecap="round" opacity="0.5"/>
+</svg>

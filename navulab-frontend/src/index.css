@@ -20,6 +20,7 @@ body {
   background-color: #F4F6FA;
   color: #1F2430;
   font-family: 'Inter', sans-serif;
+  cursor: default;
 }
 
 .font-display {

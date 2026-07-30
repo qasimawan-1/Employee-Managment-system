@@ -65,8 +65,6 @@ export default function AppShell() {
     };
   }, [location.pathname]);
 
-  const cursorDotRef = useRef(null);
-  const cursorRingRef = useRef(null);
   const contentScrollRef = useRef(null);
 
   function showToast(message, type = "info") {
@@ -83,41 +81,6 @@ export default function AppShell() {
   useEffect(() => {
     contentScrollRef.current?.scrollTo(0, 0);
   }, [location.pathname]);
-
-  // ---- Trailing-ring cursor: dot glued to the pointer, ring eases in behind it.
-  // (The animated background canvas/particles were removed.)
-  useEffect(() => {
-    let mouseX = window.innerWidth / 2;
-    let mouseY = window.innerHeight / 2;
-    let targetX = mouseX;
-    let targetY = mouseY;
-
-    function onMouseMove(e) {
-      if (!e || typeof e.clientX !== "number") return;
-      targetX = e.clientX;
-      targetY = e.clientY;
-      if (cursorDotRef.current) {
-        cursorDotRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
-      }
-    }
-    window.addEventListener("mousemove", onMouseMove);
-
-    let frameId;
-    function render() {
-      mouseX += (targetX - mouseX) * 0.08;
-      mouseY += (targetY - mouseY) * 0.08;
-      if (cursorRingRef.current) {
-        cursorRingRef.current.style.transform = `translate(${mouseX}px, ${mouseY}px) translate(-50%, -50%)`;
-      }
-      frameId = requestAnimationFrame(render);
-    }
-    render();
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener("mousemove", onMouseMove);
-    };
-  }, []);
 
   const initial = (user?.username || "?").charAt(0).toUpperCase();
   const hour = new Date().getHours();
@@ -138,9 +101,6 @@ export default function AppShell() {
           color: "#0f172a",
         }}
       >
-        <div ref={cursorRingRef} className="custom-cursor-ring" />
-        <div ref={cursorDotRef} className="custom-cursor-dot" />
-
         {/* Mobile drawer backdrop */}
         {mobileOpen && (
           <div

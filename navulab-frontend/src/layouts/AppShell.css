@@ -7,48 +7,6 @@
   font-family: "Plus Jakarta Sans", sans-serif;
 }
 
-/* Custom trailing-ring cursor: a solid dot glued to the pointer with a larger
-   outlined ring that eases in behind it. */
-.novu-shell,
-.novu-shell * {
-  cursor: none;
-}
-
-.custom-cursor-dot,
-.custom-cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 100;
-}
-
-.custom-cursor-dot {
-  width: 8px;
-  height: 8px;
-  background: #1c73c9;
-  box-shadow: 0 0 10px rgba(28, 115, 201, 0.7);
-}
-
-.custom-cursor-ring {
-  width: 34px;
-  height: 34px;
-  border: 1.5px solid rgba(102, 232, 255, 0.45);
-  background: transparent;
-}
-
-@media (hover: none) {
-  .novu-shell,
-  .novu-shell * {
-    cursor: auto;
-  }
-  .custom-cursor-dot,
-  .custom-cursor-ring {
-    display: none;
-  }
-}
-
 .novu-shell .glass-card {
   position: relative;
   overflow: hidden;
